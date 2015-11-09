@@ -1,0 +1,23 @@
+{
+  "name": "fs-rpc",
+  "version": "1.0.0",
+  "description": "node fs rpc",
+  "main": "fs-rpc.js",
+  "keywords": [
+    "node",
+    "fs",
+    "rpc"
+  ],
+  "author": "kruemelo",
+  "license": "WTFPL",
+  "devDependencies": {
+    "async": "^1.5.0",
+    "chai": "^2.1.0",
+    "fs-extra": "^0.26.2",
+    "mocha": "^2.3.3"
+  },
+  "dependencies": {},
+  "scripts": {
+    "test": "mocha"
+  }
+}
