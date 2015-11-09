@@ -1,6 +1,6 @@
 {
   "name": "fs-rpc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "node fs rpc",
   "main": "fs-rpc.js",
   "keywords": [
@@ -8,6 +8,10 @@
     "fs",
     "rpc"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kruemelo/fs-rpc.git"
+  },  
   "author": "kruemelo",
   "license": "WTFPL",
   "devDependencies": {
