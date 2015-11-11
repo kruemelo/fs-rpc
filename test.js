@@ -113,6 +113,11 @@ describe('fs-rpc module', function () {
         rpc: {fn: 'writeFile', args: [path.join(mountPath, '/A'), new Buffer('buffer \u00bd + \u00bc = \u00be test')],'buffers':[1]},
         execResult: [] 
       }
+      // {
+      //   rpcStr: FSRPC.stringify('stat', '/'),
+      //   rpc: {fn: 'stat', args: ['/']},
+      //   execResult: [['a']]
+      // }
     ];
 
     before(function (done) {
@@ -156,7 +161,7 @@ describe('fs-rpc module', function () {
 
       it('should return null for function names set in config', function () {
         var actual;
-
+// console.log('test: validatorConfig', fsRPC.validators);
         actual = fsRPC.validate(tests[0].rpc, mountPath);
         assert.equal(actual, null);
       });

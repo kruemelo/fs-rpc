@@ -83,13 +83,23 @@
 
   FSRPC.prototype.validate = function (rpcObj, mountPath) {
 
-    var fn = rpcObj.fn,
-      args = rpcObj.args || [],
-      validator = this.validators[fn],
+    var fn,
+      args,
+      validator,
       error = null,
       path = require('path');
 
+// console.log('FSRPC.validate() rpcObj', rpcObj, ', mountPath: ', mountPath);      
+
+    if (!rpcObj || 'object' !== typeof rpcObj) {      
+      return new Error('EINVALIDARGUMENT');
+    }
+
+    args = rpcObj.args || [];
+    fn = rpcObj.fn;
+
     // validate for supported function name
+    validator = this.validators[fn];
     if (!validator) {
       return new Error('EINVALIDARGUMENT');
     }

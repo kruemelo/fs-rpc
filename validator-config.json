@@ -1,4 +1,10 @@
 {
+  "stat": [
+    {
+      "dataTypes": ["string"],
+      "isPath": true
+    }
+  ],
   "rename": [      
     {
       "dataTypes": ["string"],
