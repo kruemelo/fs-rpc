@@ -22,8 +22,16 @@
   "readdir": [
     {"dataTypes": ["string"], "isPath": true}
   ],
+  "readFile": [
+    {"dataTypes": ["string"], "isPath": true},
+    {"dataTypes": ["undefined", "string"]}
+  ],
   "writeFile": [
     {"dataTypes": ["string", "number"], "isPath": true},
     {"dataTypes": ["object", "string"]}
+  ],
+  "appendFile": [
+    {"dataTypes": ["string"], "isPath": true},
+    {"dataTypes": ["undefined", "string"]}
   ]
 }
