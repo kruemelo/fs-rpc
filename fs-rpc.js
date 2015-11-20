@@ -278,64 +278,86 @@
   };  // Server validate rpcObj
 
 
-  FSRPC.Server.execute = function (fs, rpcList, executionCallback) {
+  FSRPC.Server.eachAsync = function (list, yieldCallback, done) {
+      
+    var GeneratorFunction = (new Function('return Object.getPrototypeOf(function*(){}).constructor'))(),
+      iterFn = new GeneratorFunction(
+        'list', 
+        'fn',
+        'callback',
+        'done',
+        'function cb (e){setTimeout(function(){callback(e);},1);}for(var i=0;i<list.length;++i){yield fn(list[i],cb);} done();'
+      );
+
+    var iter = iterFn(list, yieldCallback, done, function (err) {
+      if (err instanceof Error) {
+        done(err);
+      }
+      else {
+        iter.next();          
+      }
+    });
+    
+    iter.next();
+
+    return;
+  };
+
+
+  FSRPC.Server.execute = function (fs, rpcList, executeCallback) {
 
     var resultList = [],
-      error = null,
-      rpcListIterator;
+      error = null;
 
-    function rpcCallback () {
-      resultList.push(Array.prototype.slice.call(arguments));
-      process.nextTick(function() {
-        rpcListIterator.next();
-      });
-    }
+    FSRPC.Server.eachAsync(
 
-    function * Iterator () {
+      rpcList, 
 
-      var i = 0, 
-        rpcListLength = rpcList.length,
-        rpcObj,
-        fn,
-        args;
-      
-      for (; i < rpcListLength && !error; ++i) {
+      function (rpcObj, rpcObjDone) {
+
+        var fn, args;
         
-        rpcObj = rpcList[i];
+        function rpcCallback () {   
+          resultList.push(Array.prototype.slice.call(arguments));
+          rpcObjDone(error);
+        }
 
-        if ('object' === typeof rpcObj) {
-          fn = fs[rpcObj.fn];
-          args = rpcObj.args || [];
-          if (!Array.isArray(args)) {
-            args = [args];
-          }          
-          args = args.concat(rpcCallback);          
+        if ('object' !== typeof rpcObj) {
+          rpcObjDone();
+          return;
         }
-        else {
-          fn = null;
-        }
+
+        fn = fs[rpcObj.fn];
+        args = rpcObj.args || [];
+
+        if (!Array.isArray(args)) {
+          args = [args];
+        }          
+
+        args = args.concat(rpcCallback);     
 
         if ('function' !== typeof fn) {
           error = new Error('EINVALIDFUNCTION');
           resultList.push([error]);
-          continue;
+          rpcObjDone(error);
+          return;
         } 
 
         try {
-          yield fn.apply(fs, args);          
+          fn.apply(fs, args);          
         }
         catch (err) {
           error = err;
           resultList.push([error]);
+          rpcObjDone(error);
         }
-      }      
+      },
 
-      executionCallback(error, resultList);
-    } 
+      function (err) {
+        executeCallback(err, resultList);
+      }
 
-    rpcListIterator = new Iterator();
-
-    rpcListIterator.next();
+    );
 
     return;
   };  // Server execute rpc list
