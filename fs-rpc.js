@@ -145,8 +145,7 @@
 
     var requestHandler = function (req, res, next) {
 
-      var reqData = req.body && req.body.data ? req.body.data : undefined,
-        strReqRPC = 'object' === typeof reqData ? reqData.fsrpc : undefined,  
+      var strReqRPC = req.body && req.body.data ? req.body.data : undefined,
         mountPath = req.mountPath,
         validationError = null,
         rpcList;
