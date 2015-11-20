@@ -285,17 +285,19 @@
         'fn',
         'callback',
         'done',
-        'function cb (e){setTimeout(function(){callback(e);},1);}for(var i=0;i<list.length;++i){yield fn(list[i],cb);} done();'
+        'for(var i=0;i<list.length;++i){yield fn(list[i],callback);} done(null);'
       );
 
-    var iter = iterFn(list, yieldCallback, done, function (err) {
+    function next (err) {
       if (err instanceof Error) {
         done(err);
       }
       else {
-        iter.next();          
+        setTimeout(function () {iter.next();}, 1);
       }
-    });
+    }
+
+    var iter = iterFn(list, yieldCallback, next, done);
     
     iter.next();
 
