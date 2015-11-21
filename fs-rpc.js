@@ -200,7 +200,7 @@
       var  validator = validatorConfig[rpcObj.fn];
 
       if (!validator) {
-        rpcList.push(null);
+        result.push(null);
         return;
       }
 
@@ -323,7 +323,7 @@
           rpcObjDone(error);
         }
 
-        if ('object' !== typeof rpcObj) {
+        if (!rpcObj || 'object' !== typeof rpcObj) {
           rpcObjDone();
           return;
         }

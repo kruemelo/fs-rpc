@@ -196,7 +196,7 @@ describe('fs-rpc module', function () {
             '[{"fn":"unsupportedFunction","args":[]}]', 
             validatorConfig, 
             mountPath
-          ), []);
+          ), [null]);
 
 
           client = new FSRPC.Client();
