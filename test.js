@@ -54,6 +54,29 @@ describe('fs-rpc module', function () {
   });
 
 
+  describe('FSRPC static methods', function () {
+
+    it('should convert to and from ArrayBuffer', function () {
+
+      var testStr = 'buffer \u00bd + \u00bc = \u00be test',
+        buffer,
+        toStr;
+
+      assert.isFunction(FSRPC.stringToArrayBuffer, 'stringToArrayBuffer');
+      assert.isFunction(FSRPC.arrayBufferToString, 'arrayBufferToString');
+
+      buffer = FSRPC.stringToArrayBuffer(testStr);
+
+      assert.instanceOf(buffer, ArrayBuffer);
+
+      toStr = FSRPC.arrayBufferToString(buffer);
+
+      assert.strictEqual(toStr, testStr);
+    });
+
+  }); // describe FSRPC static methods
+
+
   describe('FSRPC.Client', function () {
 
     it('should have a client constructor', function () {
