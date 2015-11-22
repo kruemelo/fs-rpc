@@ -13,6 +13,7 @@
   'use strict';
 
   var FSRPC = {};
+  
 
   FSRPC.stringToArrayBuffer = function (str) {
     var buffer = new ArrayBuffer(str.length * 2), // 2 bytes for each char
@@ -25,8 +26,26 @@
     return buffer;
   };
 
+
   FSRPC.arrayBufferToString = function (buf) {
-    return String.fromCharCode.apply(null, new Uint16Array(buf));
+
+    try {
+      return String.fromCharCode.apply(null, new Uint16Array(buf));
+    }
+    catch (e) {
+      // Uint16Array not a valid argument for String.fromCharCode.apply
+      // This is due to a bug in PhantomJS: See https://github.com/ariya/phantomjs/issues/11172
+      // workaround:
+      var dataArray = [],
+        byteLength = buf.byteLength,
+        i = 0;
+
+      for (; i < byteLength; ++i) {
+          dataArray.push(buf[i]);
+      }
+      return String.fromCharCode.apply(null, dataArray);
+    }
+
   };
 
 
