@@ -57,6 +57,18 @@
   var Client = function () {};
 
 
+  FSRPC.Client.atob = function (base64Str) {
+    if ('object' === typeof window && 'function' === typeof window.atob) {
+      // browser context
+      return decodeURIComponent(window.escape(window.atob(base64Str)));      
+    }
+    else {
+      // node context
+      return (new Buffer(base64Str,'base64')).toString();
+    }
+  };
+
+
   /*
   * static Client.parse
   * str: '{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1],"error":{"name":"Error","message":"msg"}}'
@@ -65,8 +77,7 @@
   FSRPC.Client.parse = function (str) {
 
     var jsonParsed,
-      parsedResult = [],
-      atob = atob || function (str) {return (new Buffer(str,'base64')).toString();};
+      parsedResult = [];      
 
     try {
       
@@ -84,9 +95,13 @@
             parsedResult.push(error);
           }
           else {
+            // push data
             jsonParsed.data.forEach(function (value, valueIndex) {
               if (value && jsonParsed.buffers && -1 !== jsonParsed.buffers.indexOf(valueIndex)) {             
-                parsedResult.push(FSRPC.stringToArrayBuffer(atob(String(value))));
+                // convert buffers: base64 to ArrayBuffer
+                parsedResult.push(
+                  FSRPC.stringToArrayBuffer(FSRPC.Client.atob(String(value)))
+                );
               }
               else {
                 parsedResult.push(value);

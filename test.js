@@ -19,14 +19,15 @@ server:
   -- RPC = FSRPC.Server;
   -- router.post('/rpc', function (req, res, next)
   --- req.mountPath = req.app.fsMountPath;
-  -- router.use(FSRPC.Server(validatorConfig, fnRequesHandler));
+  -- router.use(RPC(validatorConfig, fnRequesHandler));
   -- fnRequestHandler(validationError, rpc, req, res, next)
   --- RPC.execute(RPCFS, rpc, function (err, result) {
-  --- res.end(RPC.stringify(result)); -> client       
+  ---- res.end(RPC.stringify([err, result])); -> client       
 
 client:
   - RPC = FSRPC.Client
   - xhr.done: parsed = RPC.parse(result);
+  - result: [err, ..resultValues]
 */
 
 var assert = require('chai').assert;
@@ -141,6 +142,22 @@ describe('fs-rpc module', function () {
 
     }); // describe stringify calls
 
+    describe('Client atob', function () {
+
+      it('should decode base64 encoded UTF8-Strings to 16-bit DOMStrings', function () {
+
+        assert.isFunction(FSRPC.Client.atob);
+
+        // tests node context only
+        assert.strictEqual(
+          FSRPC.Client.atob('wr0gKyDCvCA9IMK+'),
+          '½ + ¼ = ¾',
+          'to DOMStrings'
+        );
+
+      });
+
+    });
 
     describe('static Client.parse', function () {
 
@@ -154,6 +171,7 @@ describe('fs-rpc module', function () {
 
         parsed = FSRPC.Client.parse('{"data":[null,{"size":123}]}');
         assert.isArray(parsed);
+        assert.strictEqual(parsed.length, 2);
         assert.equal(parsed[0], null);
         assert.equal(parsed[1].size, 123);
         
