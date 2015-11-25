@@ -49,16 +49,12 @@
   };
 
 
-  FSRPC.Client = function (fn, args) {
-    return new Client(fn, args);
+  FSRPC.Client = function () {
+    return new Client();
   };
 
 
-  var Client = function (fn, args) {
-    this.fn = fn;
-    this.args = Array.isArray(args) ? 
-      args : [args];
-  };
+  var Client = function () {};
 
 
   /*
@@ -109,13 +105,12 @@
   };  // FSRPC.Client.parse result str
 
 
-  Client.prototype.stringify = function () {
+  FSRPC.Client.stringify = function (fn, args) {
 
     var rpc = {
-        fn: this.fn,
+        fn: fn,
         args: []
-      },
-      args = this.args;
+      };
 
     if (undefined !== args ) {
     

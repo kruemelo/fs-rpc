@@ -1,5 +1,34 @@
 // $ npm test
 // $ ./node_modules/.bin/mocha -w
+
+/*
+workflow:
+
+client:
+  - RPC = FSRPC.Client
+  - rpc = RPC.stringify(fn, args)
+  - xhr.send(rpc) -> server
+
+server:
+  - express app: app = express();
+  -- bodyParser = require('body-parser');
+  -- app.use(bodyParser.json({limit: '6mb'}));
+  -- app.use('/', router);
+  - router: router = express.Router();
+  -- FSRPC = require('fs-rpc');
+  -- RPC = FSRPC.Server;
+  -- router.post('/rpc', function (req, res, next)
+  --- req.mountPath = req.app.fsMountPath;
+  -- router.use(FSRPC.Server(validatorConfig, fnRequesHandler));
+  -- fnRequestHandler(validationError, rpc, req, res, next)
+  --- RPC.execute(RPCFS, rpc, function (err, result) {
+  --- res.end(RPC.stringify(result)); -> client       
+
+client:
+  - RPC = FSRPC.Client
+  - xhr.done: parsed = RPC.parse(result);
+*/
+
 var assert = require('chai').assert;
 var FSRPC = require('./fs-rpc.js');
 var fsExtra = require('fs-extra');
@@ -94,16 +123,18 @@ describe('fs-rpc module', function () {
       
 
       it('should have a stringify function', function () {
-        var fsrpc = new FSRPC.Client();
-        assert.isFunction(fsrpc.stringify);
+        assert.isFunction(FSRPC.Client.stringify);
       });
 
 
       it('should generate correct rpc-string', function () {
 
         clientTests.forEach(function (test) {          
-          var fsrpc = new FSRPC.Client(test.rpc.fn, test.rpc.args);
-          assert.equal(fsrpc.stringify(), test.rpcStr, 'stringified');
+          assert.equal(
+            FSRPC.Client.stringify(test.rpc.fn, test.rpc.args), 
+            test.rpcStr, 
+            'stringified'
+          );
         });
 
       });
@@ -174,8 +205,7 @@ describe('fs-rpc module', function () {
 
         it('should parse rpc-strings', function () {
 
-          var client,
-            actual;
+          var actual;
     
           assert.isFunction(FSRPC.Server.parse);
 
@@ -196,15 +226,23 @@ describe('fs-rpc module', function () {
           ), null);
 
 
-          client = new FSRPC.Client('mkdir', '/x');
-          actual = FSRPC.Server.parse(client.stringify(), validatorConfig, mountPath);      
+          actual = FSRPC.Server.parse(
+            FSRPC.Client.stringify('mkdir', '/x'), 
+            validatorConfig, 
+            mountPath
+          );      
+
           assert.deepEqual(
             actual, 
             {fn: 'mkdir', args: [path.join(mountPath, '/x')]}
           );
 
-          client = new FSRPC.Client('writeFile', ['/x', str2ab('buffer \u00bd + \u00bc = \u00be test')]);
-          actual = FSRPC.Server.parse(client.stringify(), validatorConfig, mountPath);      
+          actual = FSRPC.Server.parse(
+            FSRPC.Client.stringify('writeFile', ['/x', str2ab('buffer \u00bd + \u00bc = \u00be test')]), 
+            validatorConfig, 
+            mountPath
+          );
+
           assert.deepEqual(
             actual, 
             {fn: 'writeFile', args: [path.join(mountPath, '/x'), 'buffer \u00bd + \u00bc = \u00be test']}
