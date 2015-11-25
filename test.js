@@ -8,29 +8,6 @@ var path = require('path');
 var os = require('os');
 var async = require('async');
 
-// http://updates.html5rocks.com/2012/06/How-to-convert-ArrayBuffer-to-and-from-String
-// function ab2str(buf) {
-//   return String.fromCharCode.apply(null, new Uint16Array(buf));
-// }
-// function str2ab(str) {
-//   var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-//   var bufView = new Uint16Array(buf);
-//   for (var i=0, strLen=str.length; i &lt; strLen; i++) {
-//     bufView[i] = str.charCodeAt(i);
-//   }
-//   return buf;
-// }
-
-// http://stackoverflow.com/questions/17191945/conversion-between-utf-8-arraybuffer-and-string
-// function uintToString (uintArray) {
-//     var encodedString = String.fromCharCode.apply(null, uintArray),
-//         decodedString = decodeURIComponent(escape(encodedString));
-//     return decodedString;
-// }   
-
-// function stringToByteArray (str) {
-//   return JSON.parse(JSON.stringify(new Buffer(str, 'utf8'))).data;
-// }
 
 function ab2str(buf) {
   return String.fromCharCode.apply(null, new Uint16Array(buf));
@@ -92,27 +69,28 @@ describe('fs-rpc module', function () {
 
     var clientTests = [
       {
-        rpc: [{fn: 'mkdir', args: '/a'}],
-        rpcStr: '[{"fn":"mkdir","args":["/a"]}]'
+        rpc: {fn: 'mkdir', args: '/a'},
+        rpcStr: '{"fn":"mkdir","args":["/a"]}'
       },
       {
-        rpc: [{fn: 'readdir', args: ['/']}],
-        rpcStr: '[{"fn":"readdir","args":["/"]}]'
+        rpc: {fn: 'readdir', args: ['/']},
+        rpcStr: '{"fn":"readdir","args":["/"]}'
       },
       {
-        rpc: [
-          {fn: 'open', args: ['/newFile', 'w', 0666]},
-          {fn: 'write', args: [1, 'test data', 0, 'utf8']}
-        ],
-        rpcStr: '[{"fn":"open","args":["/newFile","w",438]},{"fn":"write","args":[1,"test data",0,"utf8"]}]'
+        rpc: {fn: 'open', args: ['/newFile', 'w', 0666]},
+        rpcStr: '{"fn":"open","args":["/newFile","w",438]}'
       },
       {
-        rpc: [{fn: 'writeFile', args: ['/A', str2ab('buffer \u00bd + \u00bc = \u00be test')]}],
-        rpcStr: '[{"fn":"writeFile","args":["/A","buffer ½ + ¼ = ¾ test"]}]'
+        rpc: {fn: 'write', args: [1, 'test data', 0, 'utf8']},
+        rpcStr: '{"fn":"write","args":[1,"test data",0,"utf8"]}'
+      },
+      {
+        rpc: {fn: 'writeFile', args: ['/A', str2ab('buffer \u00bd + \u00bc = \u00be test')]},
+        rpcStr: '{"fn":"writeFile","args":["/A","buffer ½ + ¼ = ¾ test"]}'
       }
     ];
 
-    describe('Client.stringify remote procedure calls', function ()  {
+    describe('Client.stringify remote procedure call', function ()  {
       
 
       it('should have a stringify function', function () {
@@ -122,17 +100,10 @@ describe('fs-rpc module', function () {
 
 
       it('should generate correct rpc-string', function () {
-        // var testBuffer = new ArrayBuffer(42);
 
         clientTests.forEach(function (test) {          
-
-          var fsrpc = new FSRPC.Client();
-
-          test.rpc.forEach(function (testRPC) {
-            fsrpc.add(testRPC.fn, testRPC.args);
-          });
-
-          assert.equal(fsrpc.stringify(), test.rpcStr);
+          var fsrpc = new FSRPC.Client(test.rpc.fn, test.rpc.args);
+          assert.equal(fsrpc.stringify(), test.rpcStr, 'stringified');
         });
 
       });
@@ -140,38 +111,38 @@ describe('fs-rpc module', function () {
     }); // describe stringify calls
 
 
-    describe('Client.parse', function () {
-
-      var fsrpc = new FSRPC.Client();
+    describe('static Client.parse', function () {
 
       it('should have a parse function', function () {
-        assert.isFunction(fsrpc.parse);
+        assert.isFunction(FSRPC.Client.parse);
       });
 
       it('should parse rpc results', function () {
         
-        var resultListStr = '['
-              + '{"data":[null,{"size":123}]}'
-              + ',{"data":[null,{"dirY":{"size":456}}]}'
-              + ',{"data":[null,"ZmlsZTAgY29udGVudA=="]}'
-              + ',{"data":[{}],"error":{"name":"Error","message":"msg"}}'
-              + ',{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1]}'
-              + ']',
-          parsed = fsrpc.parse(resultListStr);
+        var parsed;
 
+        parsed = FSRPC.Client.parse('{"data":[null,{"size":123}]}');
         assert.isArray(parsed);
+        assert.equal(parsed[0], null);
+        assert.equal(parsed[1].size, 123);
+        
+        parsed = FSRPC.Client.parse('{"data":[null,{"dirY":{"size":456}}]}');
+        assert.equal(parsed[1].dirY.size, 456);
 
-        assert.equal(parsed[0][0], null);
-        assert.equal(parsed[0][1].size, 123);
-        assert.equal(parsed[1][1].dirY.size, 456);
-        assert.equal(parsed[2][1], 'ZmlsZTAgY29udGVudA==');
-        assert.instanceOf(parsed[3][0], Error);
-        assert.instanceOf(parsed[4][1], ArrayBuffer);
-        assert.equal(parsed[4][1].byteLength, 42);
-        assert.equal(ab2str(parsed[4][1]), 'buffer \u00bd + \u00bc = \u00be test');
+        parsed = FSRPC.Client.parse('{"data":[null,"ZmlsZTAgY29udGVudA=="]}');
+        assert.equal(parsed[1], 'ZmlsZTAgY29udGVudA==');
+        
+        parsed = FSRPC.Client.parse('{"data":[{}],"error":{"name":"Error","message":"msg"}}');
+        assert.instanceOf(parsed[0], Error);
+        
+        parsed = FSRPC.Client.parse('{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1]}');
+        assert.instanceOf(parsed[1], ArrayBuffer);
+        assert.equal(parsed[1].byteLength, 42);
+        assert.equal(ab2str(parsed[1]), 'buffer \u00bd + \u00bc = \u00be test');
+          
       });
 
-    }); // describe Client.parse
+    }); // describe static Client.parse
 
   }); // describe FSRPC.Client
 
@@ -193,7 +164,6 @@ describe('fs-rpc module', function () {
 
       it('should have a constructor', function () {
         assert.isFunction(FSRPC.Server);
-        assert.isFunction(new FSRPC.Server(), 'server constructor should return a function');
       });
 
     });
@@ -209,34 +179,35 @@ describe('fs-rpc module', function () {
     
           assert.isFunction(FSRPC.Server.parse);
 
+          assert.deepEqual(
+            FSRPC.Server.parse(
+              'invalid json string', 
+              validatorConfig, 
+              mountPath
+            ), 
+            null,
+            'invalid json string'
+          );
+
           assert.deepEqual(FSRPC.Server.parse(
-            'invalid json string', 
+            '{"fn":"unsupportedFunction","args":[]}', 
             validatorConfig, 
             mountPath
           ), null);
 
-          assert.deepEqual(FSRPC.Server.parse(
-            '[{"fn":"unsupportedFunction","args":[]}]', 
-            validatorConfig, 
-            mountPath
-          ), [null]);
 
-
-          client = new FSRPC.Client();
-          client.add('mkdir', '/x');
-
-          actual = FSRPC.Server.parse(client.stringify(), validatorConfig, mountPath);      
-          assert.deepEqual(
-            actual, [{fn: 'mkdir', args: [path.join(mountPath, '/x')]}]
-          );
-
-          client = new FSRPC.Client();
-          client.add('writeFile', ['/x', str2ab('buffer \u00bd + \u00bc = \u00be test')]);
-
+          client = new FSRPC.Client('mkdir', '/x');
           actual = FSRPC.Server.parse(client.stringify(), validatorConfig, mountPath);      
           assert.deepEqual(
             actual, 
-            [{fn: 'writeFile', args: [path.join(mountPath, '/x'), 'buffer \u00bd + \u00bc = \u00be test']}]
+            {fn: 'mkdir', args: [path.join(mountPath, '/x')]}
+          );
+
+          client = new FSRPC.Client('writeFile', ['/x', str2ab('buffer \u00bd + \u00bc = \u00be test')]);
+          actual = FSRPC.Server.parse(client.stringify(), validatorConfig, mountPath);      
+          assert.deepEqual(
+            actual, 
+            {fn: 'writeFile', args: [path.join(mountPath, '/x'), 'buffer \u00bd + \u00bc = \u00be test']}
           );
           
         });
@@ -346,13 +317,10 @@ describe('fs-rpc module', function () {
             
               function (next) {
                 FSRPC.Server.execute(rpcFS, 
-                  [{fn: 'stat', args: path.join(mountPath, 'dirA')}], 
-                  function (err, resultList) {                  
+                  {fn: 'stat', args: path.join(mountPath, 'dirA')}, 
+                  function (err, stats) {                  
                     assert.isNull(err, 'should not have an error');
-                    assert.isArray(resultList, 'resultList should be an array');
-                    assert.equal(resultList.length, 1);
-                    assert.isArray(resultList[0]);
-                    assert.isNull(resultList[0][0]);
+                    assert.isObject(stats, 'result should be an object');
                     next();              
                   }
                 );
@@ -360,10 +328,21 @@ describe('fs-rpc module', function () {
 
               function (next) {
                 FSRPC.Server.execute(rpcFS, 
-                  [{fn: 'mkdir', args: path.join(mountPath, 'dirA')}], 
-                  function (err, resultList) {
+                  {fn: 'mkdir', args: path.join(mountPath, 'dirA')}, 
+                  function (err) {
+                    assert.instanceOf(err, Error, 'first result should have an error');
+                    next();              
+                  }
+                );
+              },
+
+              function (next) {
+                FSRPC.Server.execute(rpcFS, 
+                  {fn: 'readdirStat', args: path.join(mountPath, 'dirA')}, 
+                  function (err, dirStats) {
                     assert.isNull(err, 'should not have an error');
-                    assert.instanceOf(resultList[0][0], Error, 'first result should have an error');
+                    assert.isObject(dirStats);
+                    assert.isObject(dirStats.fileA);
                     next();              
                   }
                 );
@@ -371,20 +350,9 @@ describe('fs-rpc module', function () {
 
               function (next) {
                 FSRPC.Server.execute(rpcFS, 
-                  [{fn: 'readdirStat', args: path.join(mountPath, 'dirA')}], 
-                  function (err, resultList) {
-                    assert.isObject(resultList[0][1]);
-                    assert.isObject(resultList[0][1].fileA);
-                    next();              
-                  }
-                );
-              },
-
-              function (next) {
-                FSRPC.Server.execute(rpcFS, 
-                  [{fn: 'readdirStat', args: path.join(mountPath, 'notExistingDirectory')}], 
-                  function (err, resultList) {
-                    assert.instanceOf(resultList[0][0], Error);
+                  {fn: 'readdirStat', args: path.join(mountPath, 'notExistingDirectory')}, 
+                  function (err) {
+                    assert.instanceOf(err, Error);
                     next();              
                   }
                 );
@@ -402,30 +370,24 @@ describe('fs-rpc module', function () {
 
         it('should stringify exec results', function (done) {
 
-          var rpcList = [
-              {fn: 'stat', args: [path.join(mountPath, 'dirX')]},
-              {fn: 'readdirStat', args: [path.join(mountPath, 'dirY')]},
-              {fn: 'readFile', args: [path.join(mountPath,'file0'), {encoding: 'base64'}]},
-              {fn: 'someFn', args: []},
-              {fn: 'someFn', args: []}
-            ],
-            resultList = [
-              [null,{size: 123}],
-              [null,{dirY: {size: 456}}],
-              [null,fsExtra.readFileSync(path.join(mountPath,'file0'), {encoding: 'base64'})],
-              [new Error('msg')],
-              [null, new Buffer('buffer \u00bd + \u00bc = \u00be test')]
-            ],
-            actual = FSRPC.Server.stringify(rpcList, resultList),
-            expected = '['
-              + '{"data":[null,{"size":123}]}'
-              + ',{"data":[null,{"dirY":{"size":456}}]}'
-              + ',{"data":[null,"ZmlsZTAgY29udGVudA=="]}'
-              + ',{"data":[{}],"error":{"name":"Error","message":"msg"}}'
-              + ',{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1]}'
-              + ']';
+          var expected = [
+              '{"data":[null,{"size":123}]}',
+              '{"data":[null,{"dirY":{"size":456}}]}',
+              '{"data":[null,"ZmlsZTAgY29udGVudA=="]}',
+              '{"data":[{}],"error":{"name":"Error","message":"msg"}}',
+              '{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1]}'
+            ];
 
-          assert.strictEqual(actual, expected);
+          [
+            [null, {size: 123}],
+            [null, {dirY: {size: 456}}],
+            [null, fsExtra.readFileSync(path.join(mountPath,'file0'), {encoding: 'base64'})],
+            [new Error('msg')],
+            [null, new Buffer('buffer \u00bd + \u00bc = \u00be test')]
+          ].forEach(function (rpc, index) {
+            var actual = FSRPC.Server.stringify(rpc);
+            assert.strictEqual(actual, expected[index]);            
+          });
 
           done();
         });
@@ -433,6 +395,56 @@ describe('fs-rpc module', function () {
       }); // Server.stringify
     
     }); // describe FSRPC.Server static functions
+
+
+    describe('use as an express middleware', function () {
+
+      it('should handle request', function (done) {
+
+        var server;
+
+        function parsedCallback (validationError, rpc, req, res, next) {
+          assert.isNull(validationError);
+          assert.isObject(req, 'req');
+          assert.isObject(res, 'res');
+          assert.isFunction(next, 'next');
+          assert.strictEqual(req.mountPath, mountPath, 'req.mountPath');
+          assert.deepEqual(
+            rpc, 
+            {
+              fn: 'writeFile', 
+              args: [
+                path.join(mountPath, '/A'), 
+                'buffer \u00bd + \u00bc = \u00be test'
+              ]
+            }
+          );
+          done();
+        }
+
+        server = new FSRPC.Server(validatorConfig, parsedCallback);
+
+        assert.isFunction(server, 'server constructor should return a function');
+
+        server(
+          // req
+          {
+            body: {
+              data: '{"fn":"writeFile","args":["/A","buffer ½ + ¼ = ¾ test"]}'
+            },
+            // expects mount path to be set in req
+            mountPath: mountPath
+          },
+          // res
+          {},
+          //next
+          function () {
+          }
+        );
+
+      }); // handle request
+
+    }); // describe use as an express middleware
 
   }); // describe FSRPC.Server
 

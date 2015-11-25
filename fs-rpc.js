@@ -49,125 +49,107 @@
   };
 
 
-  FSRPC.Client = function () {
-    return new Client();
+  FSRPC.Client = function (fn, args) {
+    return new Client(fn, args);
   };
 
 
-  var Client = function () {
-    this.rpcList = [];
+  var Client = function (fn, args) {
+    this.fn = fn;
+    this.args = Array.isArray(args) ? 
+      args : [args];
   };
 
 
-  Client.prototype.add = function (fn, args) {
-    this.rpcList.push({
-      fn: fn,
-      args: args
-    });
-    return this;
-  };  // Client add rpc
-
-
-  Client.prototype.stringify = function () {
-
-    var list = [];
-
-    this.rpcList.forEach(function (listRPC) {
-
-      var rpc = {
-          fn: listRPC.fn,
-          args: []
-        },
-        args = listRPC.args;
-
-      if (undefined !== args ) {
-      
-        if (!Array.isArray(args)) {
-          args = [args];
-        }
-
-        if (args.length) {
-          // add arguments
-          args.forEach(function (arg) {
-            if (arg instanceof ArrayBuffer) {
-              rpc.args.push(FSRPC.arrayBufferToString(arg));
-            }
-            else {
-              rpc.args.push(arg);
-            }
-          });        
-        }
-      }
-
-      list.push(rpc);
-    });
-
-    return JSON.stringify(list);
-  };  // Client stringify rpc list
-
-
-  Client.prototype.parse = function (resultListStr) {
+  /*
+  * static Client.parse
+  * str: '{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1],"error":{"name":"Error","message":"msg"}}'
+  * returns: [Error,data1,data2,..]
+  */
+  FSRPC.Client.parse = function (str) {
 
     var jsonParsed,
-      parsedResultList,
+      parsedResult = [],
       atob = atob || function (str) {return (new Buffer(str,'base64')).toString();};
 
     try {
       
-      jsonParsed = JSON.parse(resultListStr);
+      jsonParsed = JSON.parse(str);
 
-      if (Array.isArray(jsonParsed)) {
+      if ('object' === typeof jsonParsed) {
 
-        parsedResultList = [];
-        jsonParsed.forEach(function (rpcResult) {
+        var error;
 
-          var parsedResult = [],
-            error;
+        if (jsonParsed && Array.isArray(jsonParsed.data)) {
 
-          if (rpcResult && Array.isArray(rpcResult.data)) {
-
-            if ('object' === typeof rpcResult.error) {
-              error = new Error(rpcResult.error.message);
-              error.name = rpcResult.error.name;
-              parsedResult.push(error);
-            }
-            else {
-              rpcResult.data.forEach(function (value, valueIndex) {
-                if (value && rpcResult.buffers && -1 !== rpcResult.buffers.indexOf(valueIndex)) {             
-                  parsedResult.push(FSRPC.stringToArrayBuffer(atob(String(value))));
-                }
-                else {
-                  parsedResult.push(value);
-                }
-              });
-            }
-          
+          if ('object' === typeof jsonParsed.error) {
+            error = new Error(jsonParsed.error.message);
+            error.name = jsonParsed.error.name;
+            parsedResult.push(error);
           }
           else {
-            parsedResult.push(rpcResult);
+            jsonParsed.data.forEach(function (value, valueIndex) {
+              if (value && jsonParsed.buffers && -1 !== jsonParsed.buffers.indexOf(valueIndex)) {             
+                parsedResult.push(FSRPC.stringToArrayBuffer(atob(String(value))));
+              }
+              else {
+                parsedResult.push(value);
+              }
+            });
           }
-
-          parsedResultList.push(parsedResult);
-        });
+        
+        }
       }
     }
-    catch (err) {
-      // console.log(err);      
-      parsedResultList = null;
+    catch (err) {    
+      parsedResult[0] = err;
     }
 
-    return parsedResultList;
-  };  // Client parse result list
+    return parsedResult;
+  };  // FSRPC.Client.parse result str
+
+
+  Client.prototype.stringify = function () {
+
+    var rpc = {
+        fn: this.fn,
+        args: []
+      },
+      args = this.args;
+
+    if (undefined !== args ) {
+    
+      if (!Array.isArray(args)) {
+        args = [args];
+      }
+
+      if (args.length) {
+        // add arguments
+        args.forEach(function (arg) {
+          if (arg instanceof ArrayBuffer) {
+            rpc.args.push(FSRPC.arrayBufferToString(arg));
+          }
+          else {
+            rpc.args.push(arg);
+          }
+        });        
+      }
+    }
+
+    return JSON.stringify(rpc);
+
+  };  // Client stringify rpc 
 
 
   FSRPC.Server = function (validatorConfig, parsedCallback) {
 
+    // returns a connect/express request handler fn
     var requestHandler = function (req, res, next) {
 
       var strReqRPC = req.body && req.body.data ? req.body.data : undefined,
         mountPath = req.mountPath,
         validationError = null,
-        rpcList;
+        rpcObj;
 
       if (!strReqRPC || !mountPath) {
         next();
@@ -175,18 +157,15 @@
       }
 
       // parse
-      rpcList = FSRPC.Server.parse(strReqRPC, validatorConfig, mountPath);
+      rpcObj = FSRPC.Server.parse(strReqRPC, validatorConfig, mountPath);
       
       // validate
-      if (Array.isArray(rpcList)) {
+      if (rpcObj && 'object' === typeof rpcObj) {
       
-        rpcList.some(function (rpcObj) {
-          validationError = FSRPC.Server.validate(rpcObj, validatorConfig, mountPath);
-          return !!validationError;
-        });
+        validationError = FSRPC.Server.validate(rpcObj, validatorConfig, mountPath);
 
         if ('function' === typeof parsedCallback) {
-          parsedCallback(validationError, rpcList, req, res, next);
+          parsedCallback(validationError, rpcObj, req, res, next);
           return;
         }
       }
@@ -199,43 +178,36 @@
   };  // Server
 
   
-  FSRPC.Server.parse = function (rpcListStr, validatorConfig, mountPath) {
+  FSRPC.Server.parse = function (rpcStr, validatorConfig, mountPath) {
 
-    var rpcList,
+    var rpcObj,
       path = require('path'),
-      result = [];
+      validator;
 
     try {
-      rpcList = JSON.parse(rpcListStr);
+      rpcObj = JSON.parse(rpcStr);
     }
     catch (err) {}
 
-    if (!Array.isArray(rpcList)) {
+    if (!rpcObj || 'object' !== typeof rpcObj || 'string' !== typeof rpcObj.fn) {
       return null;
     }
 
-    rpcList.forEach(function (rpcObj) {
+    validator = validatorConfig[rpcObj.fn];
 
-      var  validator = validatorConfig[rpcObj.fn];
+    if (!validator) {
+      return null;
+    }
 
-      if (!validator) {
-        result.push(null);
-        return;
+    // extend paths with mount path
+    validator.forEach(function (argValidator, argIndex) {
+      if (argValidator.isPath && 'string' === typeof rpcObj.args[argIndex] ) {
+        rpcObj.args[argIndex] = path.join(mountPath, rpcObj.args[argIndex]);
       }
-
-      // extend paths with mount path
-      validator.forEach(function (argValidator, argIndex) {
-        if (argValidator.isPath && 'string' === typeof rpcObj.args[argIndex] ) {
-          rpcObj.args[argIndex] = path.join(mountPath, rpcObj.args[argIndex]);
-        }
-      });
-
-      result.push(rpcObj);
-
     });
 
-    return result;
-  };  // Server parse rpc list string
+    return rpcObj;
+  };  // Server parse rpc string
 
 
   FSRPC.Server.validate = function (rpcObj, validatorConfig, mountPath) {
@@ -296,132 +268,72 @@
   };  // Server validate rpcObj
 
 
-  FSRPC.Server.eachAsync = function (list, yieldCallback, done) {
-      
-    var GeneratorFunction = (new Function('return Object.getPrototypeOf(function*(){}).constructor'))(),
-      iterFn = new GeneratorFunction(
-        'list', 
-        'fn',
-        'callback',
-        'done',
-        'for(var i=0;i<list.length;++i){yield fn(list[i],callback);} done(null);'
-      );
+  FSRPC.Server.execute = function (fs, rpcObj, callback) {
 
-    function next (err) {
-      if (err instanceof Error) {
-        done(err);
-      }
-      else {
-        setTimeout(function () {iter.next();}, 1);
-      }
+    var fn, args;
+
+    if (!rpcObj || 'object' !== typeof rpcObj) {
+      callback();
+      return;
     }
 
-    var iter = iterFn(list, yieldCallback, next, done);
+    fn = fs[rpcObj.fn];
     
-    iter.next();
+    if ('function' !== typeof fn) {
+      callback(new Error('EINVALIDFUNCTION'));
+      return;
+    } 
+
+    args = rpcObj.args || [];
+
+    if (!Array.isArray(args)) {
+      args = [args];
+    }          
+
+    args = args.concat(callback);     
+
+    try {
+      fn.apply(fs, args);          
+    }
+    catch (err) {
+      callback(err);
+    }
 
     return;
-  };
+  };  // Server execute rpc 
 
 
-  FSRPC.Server.execute = function (fs, rpcList, executeCallback) {
+  FSRPC.Server.stringify = function (execResults) {
 
-    var resultList = [],
-      error = null;
+    var rpcResult = {data: []};
 
-    FSRPC.Server.eachAsync(
-
-      rpcList, 
-
-      function (rpcObj, rpcObjDone) {
-
-        var fn, args;
-        
-        function rpcCallback () {   
-          resultList.push(Array.prototype.slice.call(arguments));
-          rpcObjDone(error);
+    if (Array.isArray(execResults)) {
+      // an exec result      
+      execResults.forEach(function (execResult, execResultIndex) {
+        if (0 === execResultIndex && execResult instanceof Error) {
+          // new Error('message') > "Error: message"
+          rpcResult.data.push(execResult);
+          rpcResult.error = {name: execResult.name, message: execResult.message};            
         }
-
-        if (!rpcObj || 'object' !== typeof rpcObj) {
-          rpcObjDone();
-          return;
-        }
-
-        fn = fs[rpcObj.fn];
-        args = rpcObj.args || [];
-
-        if (!Array.isArray(args)) {
-          args = [args];
-        }          
-
-        args = args.concat(rpcCallback);     
-
-        if ('function' !== typeof fn) {
-          error = new Error('EINVALIDFUNCTION');
-          resultList.push([error]);
-          rpcObjDone(error);
-          return;
-        } 
-
-        try {
-          fn.apply(fs, args);          
-        }
-        catch (err) {
-          error = err;
-          resultList.push([error]);
-          rpcObjDone(error);
-        }
-      },
-
-      function (err) {
-        executeCallback(err, resultList);
-      }
-
-    );
-
-    return;
-  };  // Server execute rpc list
-
-
-  FSRPC.Server.stringify = function (rpcList, resultList) {
-
-    var list = [];
-      
-    rpcList.forEach(function (rpc, rpcIndex) {
-
-      var rpcResult = {data: []},
-        execResults = resultList[rpcIndex];
-
-      if (Array.isArray(execResults)) {
-        // an exec result      
-        execResults.forEach(function (execResult, execResultIndex) {
-          if (0 === execResultIndex && execResult instanceof Error) {
-            // new Error('message') > "Error: message"
-            rpcResult.data.push(execResult);
-            rpcResult.error = {name: execResult.name, message: execResult.message};            
+        else if (execResult instanceof Buffer) {
+          rpcResult.data.push(execResult.toString('base64'));
+          if (!rpcResult.buffers) {
+            rpcResult.buffers = [];
           }
-          else if (execResult instanceof Buffer) {
-            rpcResult.data.push(execResult.toString('base64'));
-            if (!rpcResult.buffers) {
-              rpcResult.buffers = [];
-            }
-            rpcResult.buffers.push(execResultIndex);
-          }
-          else {
-            rpcResult.data.push(execResult);            
-          }
-        });
-      }
-      else {
-        // not an exec result
-        rpcResult.data.push(execResults);
-      }
+          rpcResult.buffers.push(execResultIndex);
+        }
+        else {
+          rpcResult.data.push(execResult);            
+        }
+      });
+    }
+    else {
+      // not an exec result
+      rpcResult.data.push(execResults);
+    }
 
-      list.push(rpcResult);
-    });
-
-    return JSON.stringify(list);    
-  };  // Server stringify result list
+    return JSON.stringify(rpcResult);    
+  };  // Server stringify result 
 
   return FSRPC;
 
