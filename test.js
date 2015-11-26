@@ -38,18 +38,8 @@ var path = require('path');
 var os = require('os');
 var async = require('async');
 
-
-function ab2str(buf) {
-  return String.fromCharCode.apply(null, new Uint16Array(buf));
-}
-
-function str2ab(str) {
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-  var bufView = new Uint16Array(buf);
-  for (var i=0, strLen=str.length; i < strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
+function base64 (utf8Str) {
+  return (new Buffer(utf8Str)).toString('base64');
 }
 
 /*global assert */
@@ -60,31 +50,26 @@ describe('fs-rpc module', function () {
     assert.isObject(FSRPC, 'FSRPC should be object');
   });
 
-
-  describe('FSRPC static methods', function () {
-
-    it('should convert to and from ArrayBuffer', function () {
-
-      var testStr = 'buffer \u00bd + \u00bc = \u00be test',
-        buffer,
-        toStr;
-
-      assert.isFunction(FSRPC.stringToArrayBuffer, 'stringToArrayBuffer');
-      assert.isFunction(FSRPC.arrayBufferToString, 'arrayBufferToString');
-
-      buffer = FSRPC.stringToArrayBuffer(testStr);
-
-      assert.instanceOf(buffer, ArrayBuffer);
-
-      toStr = FSRPC.arrayBufferToString(buffer);
-
-      assert.strictEqual(toStr, testStr);
-    });
-
-  }); // describe FSRPC static methods
-
-
   describe('FSRPC.Client', function () {
+
+    // it('should convert to and from ArrayBuffer', function () {
+
+    //   var testStr = 'buffer \u00bd + \u00bc = \u00be test',
+    //     buffer,
+    //     toStr;
+
+    //   assert.isFunction(FSRPC.Client.stringToArrayBuffer, 'stringToArrayBuffer');
+    //   assert.isFunction(FSRPC.Client.arrayBufferToString, 'arrayBufferToString');
+
+    //   buffer = FSRPC.Client.stringToArrayBuffer(testStr);
+
+    //   assert.instanceOf(buffer, ArrayBuffer);
+    //   assert.strictEqual(buffer.byteLength, 21);
+
+    //   toStr = FSRPC.Client.arrayBufferToString(buffer);
+
+    //   assert.strictEqual(toStr, testStr);
+    // });
 
     it('should have a client constructor', function () {
 
@@ -115,7 +100,7 @@ describe('fs-rpc module', function () {
         rpcStr: '{"fn":"write","args":[1,"test data",0,"utf8"]}'
       },
       {
-        rpc: {fn: 'writeFile', args: ['/A', str2ab('buffer \u00bd + \u00bc = \u00be test')]},
+        rpc: {fn: 'writeFile', args: ['/A', 'buffer \u00bd + \u00bc = \u00be test']},
         rpcStr: '{"fn":"writeFile","args":["/A","buffer ½ + ¼ = ¾ test"]}'
       }
     ];
@@ -142,22 +127,22 @@ describe('fs-rpc module', function () {
 
     }); // describe stringify calls
 
-    describe('Client atob', function () {
+    // describe('Client atob', function () {
 
-      it('should decode base64 encoded UTF8-Strings to 16-bit DOMStrings', function () {
+    //   it('should decode base64 encoded UTF8-Strings to 16-bit DOMStrings', function () {
 
-        assert.isFunction(FSRPC.Client.atob);
+    //     assert.isFunction(FSRPC.Client.atob);
 
-        // tests node context only
-        assert.strictEqual(
-          FSRPC.Client.atob('wr0gKyDCvCA9IMK+'),
-          '½ + ¼ = ¾',
-          'to DOMStrings'
-        );
+    //     // tests node context only
+    //     assert.strictEqual(
+    //       FSRPC.Client.atob('wr0gKyDCvCA9IMK+'),
+    //       '½ + ¼ = ¾',
+    //       'to DOMStrings'
+    //     );
 
-      });
+    //   });
 
-    });
+    // });
 
     describe('static Client.parse', function () {
 
@@ -184,11 +169,6 @@ describe('fs-rpc module', function () {
         parsed = FSRPC.Client.parse('{"data":[{}],"error":{"name":"Error","message":"msg"}}');
         assert.instanceOf(parsed[0], Error);
         
-        parsed = FSRPC.Client.parse('{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1]}');
-        assert.instanceOf(parsed[1], ArrayBuffer);
-        assert.equal(parsed[1].byteLength, 42);
-        assert.equal(ab2str(parsed[1]), 'buffer \u00bd + \u00bc = \u00be test');
-          
       });
 
     }); // describe static Client.parse
@@ -256,14 +236,14 @@ describe('fs-rpc module', function () {
           );
 
           actual = FSRPC.Server.parse(
-            FSRPC.Client.stringify('writeFile', ['/x', str2ab('buffer \u00bd + \u00bc = \u00be test')]), 
+            FSRPC.Client.stringify('writeFile', ['/x', base64('buffer \u00bd + \u00bc = \u00be test')]), 
             validatorConfig, 
             mountPath
           );
 
           assert.deepEqual(
             actual, 
-            {fn: 'writeFile', args: [path.join(mountPath, '/x'), 'buffer \u00bd + \u00bc = \u00be test']}
+            {fn: 'writeFile', args: [path.join(mountPath, '/x'), 'YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0']}
           );
           
         });
@@ -431,7 +411,7 @@ describe('fs-rpc module', function () {
               '{"data":[null,{"dirY":{"size":456}}]}',
               '{"data":[null,"ZmlsZTAgY29udGVudA=="]}',
               '{"data":[{}],"error":{"name":"Error","message":"msg"}}',
-              '{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1]}'
+              '{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"]}'
             ];
 
           [
@@ -439,7 +419,7 @@ describe('fs-rpc module', function () {
             [null, {dirY: {size: 456}}],
             [null, fsExtra.readFileSync(path.join(mountPath,'file0'), {encoding: 'base64'})],
             [new Error('msg')],
-            [null, new Buffer('buffer \u00bd + \u00bc = \u00be test')]
+            [null, base64('buffer \u00bd + \u00bc = \u00be test')]
           ].forEach(function (rpc, index) {
             var actual = FSRPC.Server.stringify(rpc);
             assert.strictEqual(actual, expected[index]);            

@@ -15,58 +15,12 @@
   var FSRPC = {};
   
 
-  FSRPC.stringToArrayBuffer = function (str) {
-    var buffer = new ArrayBuffer(str.length * 2), // 2 bytes for each char
-      bufView = new Uint16Array(buffer),
-      strLength = str.length,
-      i = 0;
-    for (; i < strLength; ++i) {
-      bufView[i] = str.charCodeAt(i);
-    }
-    return buffer;
-  };
-
-
-  FSRPC.arrayBufferToString = function (buf) {
-
-    try {
-      return String.fromCharCode.apply(null, new Uint16Array(buf));
-    }
-    catch (e) {
-      // Uint16Array not a valid argument for String.fromCharCode.apply
-      // This is due to a bug in PhantomJS: See https://github.com/ariya/phantomjs/issues/11172
-      // workaround:
-      var dataArray = [],
-        byteLength = buf.byteLength,
-        i = 0;
-
-      for (; i < byteLength; ++i) {
-          dataArray.push(buf[i]);
-      }
-      return String.fromCharCode.apply(null, dataArray);
-    }
-
-  };
-
-
   FSRPC.Client = function () {
     return new Client();
   };
 
 
   var Client = function () {};
-
-
-  FSRPC.Client.atob = function (base64Str) {
-    if ('object' === typeof window && 'function' === typeof window.atob) {
-      // browser context
-      return decodeURIComponent(window.escape(window.atob(base64Str)));      
-    }
-    else {
-      // node context
-      return (new Buffer(base64Str,'base64')).toString();
-    }
-  };
 
 
   /*
@@ -95,18 +49,7 @@
             parsedResult.push(error);
           }
           else {
-            // push data
-            jsonParsed.data.forEach(function (value, valueIndex) {
-              if (value && jsonParsed.buffers && -1 !== jsonParsed.buffers.indexOf(valueIndex)) {             
-                // convert buffers: base64 to ArrayBuffer
-                parsedResult.push(
-                  FSRPC.stringToArrayBuffer(FSRPC.Client.atob(String(value)))
-                );
-              }
-              else {
-                parsedResult.push(value);
-              }
-            });
+            parsedResult = jsonParsed.data;
           }
         
         }
@@ -133,17 +76,8 @@
         args = [args];
       }
 
-      if (args.length) {
-        // add arguments
-        args.forEach(function (arg) {
-          if (arg instanceof ArrayBuffer) {
-            rpc.args.push(FSRPC.arrayBufferToString(arg));
-          }
-          else {
-            rpc.args.push(arg);
-          }
-        });        
-      }
+      // add arguments
+      rpc.args = args;
     }
 
     return JSON.stringify(rpc);
@@ -324,13 +258,6 @@
           // new Error('message') > "Error: message"
           rpcResult.data.push(execResult);
           rpcResult.error = {name: execResult.name, message: execResult.message};            
-        }
-        else if (execResult instanceof Buffer) {
-          rpcResult.data.push(execResult.toString('base64'));
-          if (!rpcResult.buffers) {
-            rpcResult.buffers = [];
-          }
-          rpcResult.buffers.push(execResultIndex);
         }
         else {
           rpcResult.data.push(execResult);            
