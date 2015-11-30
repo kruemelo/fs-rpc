@@ -207,13 +207,6 @@ var RPC = FSRPC.Server;
 var validatorConfig = require('./validator-config.json');
 
 function parsedCallback (validationError, rpc, req, res, next) {
-  ...
-}
-
-router.use(RPC(
-  validatorConfig, 
-  function (validationError, rpc, req, res, next) {
-    
     if (validationError) {
       next(validationError);
       return;
@@ -222,8 +215,11 @@ router.use(RPC(
     RPC.execute(RPCFS, rpc, function (err, result) {
       res.end(RPC.stringify([err, result]));              
     });
+}
 
-  }
+router.use(RPC(
+  validatorConfig, 
+  parsedCallback
 ));
 
 ```
