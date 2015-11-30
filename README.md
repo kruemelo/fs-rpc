@@ -202,8 +202,8 @@ client:
 var express = require('express');
 var router = express.Router();
 
-var FSRPC = require('fs-rpc');
-var RPC = FSRPC.Server;
+var RPCFS = require('rpc-fs');
+var RPC = require('fs-rpc').Server;
 var validatorConfig = require('./validator-config.json');
 
 function parsedCallback (validationError, rpc, req, res, next) {
