@@ -241,3 +241,6 @@ or watch:
     $ ./node_modules/.bin/mocha -w
 
 
+License
+-------
+[WTFPL](http://www.wtfpl.net/)
