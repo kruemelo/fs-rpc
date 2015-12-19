@@ -71,7 +71,7 @@ FSRPC.Client.parse('{"data":[null,{"size":123}]}');
 
 use with connect/express, CLI, ..
 
-All fs-rpc will be executed relative to a mount path `mountPath`, e.g., folder `/home/customer`.
+All fs-rpcs will be executed relative to a mount path `mountPath`, e.g., folder `/home/customer`.
 
 ### Methods
 
@@ -178,18 +178,18 @@ client:
 
 server:
 * express app: app = express();
-** bodyParser = require('body-parser');
-** app.use(bodyParser.json({limit: '6mb'}));
-** app.use('/', router);
+ * bodyParser = require('body-parser');
+ * app.use(bodyParser.json({limit: '6mb'}));
+ * app.use('/', router);
 * router: router = express.Router();
-** FSRPC = require('fs-rpc');
-** RPC = FSRPC.Server;
-** router.post('/rpc', function (req, res, next)
-*** req.mountPath = req.app.fsMountPath;
-** router.use(RPC(validatorConfig, fnRequesHandler));
-** fnRequestHandler(validationError, rpc, req, res, next)
-*** RPC.execute(RPCFS, rpc, function (err, result) {
-**** res.end(RPC.stringify([err, result])); -> client       
+ * FSRPC = require('fs-rpc');
+ * RPC = FSRPC.Server; 
+ * router.post('/rpc', function (req, res, next)
+ * req.mountPath = req.app.fsMountPath;
+ * router.use(RPC(validatorConfig, fnRequesHandler));
+ * fnRequestHandler(validationError, rpc, req, res, next)
+ * RPC.execute(RPCFS, rpc, function (err, result) {
+ * res.end(RPC.stringify([err, result])); -> client   
 
 client:
 * RPC = FSRPC.Client
@@ -207,14 +207,14 @@ var RPC = require('fs-rpc').Server;
 var validatorConfig = require('./validator-config.json');
 
 function parsedCallback (validationError, rpc, req, res, next) {
-    if (validationError) {
-      next(validationError);
-      return;
-    }
+  if (validationError) {
+    next(validationError);
+    return;
+  }
 
-    RPC.execute(RPCFS, rpc, function (err, result) {
-      res.end(RPC.stringify([err, result]));              
-    });
+  RPC.execute(RPCFS, rpc, function (err, result) {
+    res.end(RPC.stringify([err, result]));              
+  });
 }
 
 router.use(RPC(
