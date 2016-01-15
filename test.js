@@ -52,18 +52,6 @@ describe('fs-rpc module', function () {
 
   describe('FSRPC.Client', function () {
 
-
-    it('should have a client constructor', function () {
-
-      var fsrpc;
-
-      assert.isFunction(FSRPC.Client);
-
-      fsrpc = new FSRPC.Client();
-      assert.isObject(fsrpc);
-    });
-
-
     var clientTests = [
       {
         rpc: {fn: 'mkdir', args: '/a'},

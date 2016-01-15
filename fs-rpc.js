@@ -15,13 +15,7 @@
   var FSRPC = {};
   
 
-  FSRPC.Client = function () {
-    return new Client();
-  };
-
-
-  var Client = function () {};
-
+  FSRPC.Client = {};
 
   /*
   * static Client.parse
