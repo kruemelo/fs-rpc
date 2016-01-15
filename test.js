@@ -52,24 +52,6 @@ describe('fs-rpc module', function () {
 
   describe('FSRPC.Client', function () {
 
-    // it('should convert to and from ArrayBuffer', function () {
-
-    //   var testStr = 'buffer \u00bd + \u00bc = \u00be test',
-    //     buffer,
-    //     toStr;
-
-    //   assert.isFunction(FSRPC.Client.stringToArrayBuffer, 'stringToArrayBuffer');
-    //   assert.isFunction(FSRPC.Client.arrayBufferToString, 'arrayBufferToString');
-
-    //   buffer = FSRPC.Client.stringToArrayBuffer(testStr);
-
-    //   assert.instanceOf(buffer, ArrayBuffer);
-    //   assert.strictEqual(buffer.byteLength, 21);
-
-    //   toStr = FSRPC.Client.arrayBufferToString(buffer);
-
-    //   assert.strictEqual(toStr, testStr);
-    // });
 
     it('should have a client constructor', function () {
 
@@ -127,22 +109,6 @@ describe('fs-rpc module', function () {
 
     }); // describe stringify calls
 
-    // describe('Client atob', function () {
-
-    //   it('should decode base64 encoded UTF8-Strings to 16-bit DOMStrings', function () {
-
-    //     assert.isFunction(FSRPC.Client.atob);
-
-    //     // tests node context only
-    //     assert.strictEqual(
-    //       FSRPC.Client.atob('wr0gKyDCvCA9IMK+'),
-    //       '½ + ¼ = ¾',
-    //       'to DOMStrings'
-    //     );
-
-    //   });
-
-    // });
 
     describe('static Client.parse', function () {
 
