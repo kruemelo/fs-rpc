@@ -19,7 +19,7 @@
 
   /*
   * static Client.parse
-  * str: '{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"buffers":[1],"error":{"name":"Error","message":"msg"}}'
+  * str: '{"data":[null,"YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0"],"error":{"name":"Error","message":"msg"}}'
   * returns: [Error,data1,data2,..]
   */
   FSRPC.Client.parse = function (str) {
@@ -95,11 +95,15 @@
       }
 
       // parse
-      rpcObj = FSRPC.Server.parse(strReqRPC, validatorConfig, mountPath);
+      rpcObj = FSRPC.Server.parse(strReqRPC, validatorConfig);
+
       
-      // validate
       if (rpcObj && 'object' === typeof rpcObj) {
+
+        // extend paths
+        FSRPC.Server.extendPaths(rpcObj, validatorConfig, mountPath);
       
+        // validate
         validationError = FSRPC.Server.validate(rpcObj, validatorConfig, mountPath);
 
         if ('function' === typeof parsedCallback) {
@@ -116,20 +120,31 @@
   };  // Server
 
   
-  FSRPC.Server.parse = function (rpcStr, validatorConfig, mountPath) {
+  FSRPC.Server.parse = function (rpcStr, validatorConfig) {
 
-    var rpcObj,
-      path = require('path'),
-      validator;
+    var rpcObj;
 
     try {
       rpcObj = JSON.parse(rpcStr);
     }
     catch (err) {}
 
-    if (!rpcObj || 'object' !== typeof rpcObj || 'string' !== typeof rpcObj.fn) {
-      return null;
+    if (!rpcObj || 
+        'object' !== typeof rpcObj || 
+        'string' !== typeof rpcObj.fn || 
+        !validatorConfig[rpcObj.fn]
+      ) {
+      rpcObj = null;
     }
+
+    return rpcObj;
+  };  // Server parse rpc string
+
+
+  FSRPC.Server.extendPaths = function (rpcObj, validatorConfig, mountPath) {
+
+    var path = require('path'),
+      validator;
 
     validator = validatorConfig[rpcObj.fn];
 
@@ -143,9 +158,7 @@
         rpcObj.args[argIndex] = path.join(mountPath, rpcObj.args[argIndex]);
       }
     });
-
-    return rpcObj;
-  };  // Server parse rpc string
+  };
 
 
   FSRPC.Server.validate = function (rpcObj, validatorConfig, mountPath) {

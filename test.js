@@ -164,8 +164,7 @@ describe('fs-rpc module', function () {
           assert.deepEqual(
             FSRPC.Server.parse(
               'invalid json string', 
-              validatorConfig, 
-              mountPath
+              validatorConfig
             ), 
             null,
             'invalid json string'
@@ -173,16 +172,16 @@ describe('fs-rpc module', function () {
 
           assert.deepEqual(FSRPC.Server.parse(
             '{"fn":"unsupportedFunction","args":[]}', 
-            validatorConfig, 
-            mountPath
+            validatorConfig
           ), null);
 
 
           actual = FSRPC.Server.parse(
             FSRPC.Client.stringify('mkdir', '/x'), 
-            validatorConfig, 
-            mountPath
-          );      
+            validatorConfig
+          );
+
+          FSRPC.Server.extendPaths(actual, validatorConfig, mountPath);
 
           assert.deepEqual(
             actual, 
@@ -191,10 +190,11 @@ describe('fs-rpc module', function () {
 
           actual = FSRPC.Server.parse(
             FSRPC.Client.stringify('writeFile', ['/x', base64('buffer \u00bd + \u00bc = \u00be test')]), 
-            validatorConfig, 
-            mountPath
+            validatorConfig
           );
 
+          FSRPC.Server.extendPaths(actual, validatorConfig, mountPath);
+          
           assert.deepEqual(
             actual, 
             {fn: 'writeFile', args: [path.join(mountPath, '/x'), 'YnVmZmVyIMK9ICsgwrwgPSDCviB0ZXN0']}
