@@ -129,7 +129,7 @@ the mounting path `mountPath`.
 **returns** undefined
 
 
-#### validate(rpcObj, validatorConfig, mountPath)
+#### validate(rpcObj, validatorConfig)
 
 Validates the rpcObj for supported function calls and argument data types.
 
@@ -140,12 +140,6 @@ If the function name `rpc.fn` is not defined in the validator config, an error w
 **validatorConfig** required object
 
 the validator config object
-
-**mountPath** required string
-
-the mounting path `mountPath`.
-
-All args with configured `true === isPath` will be checked: if the argument value starts with `mountPath`, the path check is OK.
 
 **returns** `null` for valid rpc or `object` error for invalid rpc
 

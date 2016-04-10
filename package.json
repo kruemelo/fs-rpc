@@ -11,7 +11,7 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/kruemelo/fs-rpc.git"
-  },  
+  },
   "author": "kruemelo",
   "license": "WTFPL",
   "engines": {
@@ -22,9 +22,13 @@
     "chai": "^2.1.0",
     "fs-extra": "^0.26.2",
     "mocha": "^2.3.3",
-    "rpc-fs": "^0.3.2"
+    "rpc-fs": "^0.3.7"
   },
   "dependencies": {
+    "async": "^1.5.2",
+    "fs-extra": "^0.26.7",
+    "mocha": "^2.4.5",
+    "rpc-fs": "^0.3.7"
   },
   "scripts": {
     "test": "mocha"
