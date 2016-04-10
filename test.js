@@ -218,19 +218,11 @@ describe('fs-rpc module', function () {
         it('should return an error if function name rpc.fn is not set in config', function () {
           var actual;
 
-          actual = FSRPC.Server.validate(
-            {args: []}, 
-            validatorConfig, 
-            mountPath
-          );
+          actual = FSRPC.Server.validate({args: []}, validatorConfig);
           
           assert.instanceOf(actual, Error);
 
-          actual = FSRPC.Server.validate(
-            {fn: 'unsupportedFunction', args: []},
-            validatorConfig, 
-            mountPath
-          );
+          actual = FSRPC.Server.validate({fn: 'unsupportedFunction', args: []}, validatorConfig);
           
           assert.instanceOf(actual, Error);
 
@@ -239,7 +231,7 @@ describe('fs-rpc module', function () {
 
         it('should return null for function names set in config', function () {
           var actual;
-          actual = FSRPC.Server.validate(validRPCObj, validatorConfig, mountPath);
+          actual = FSRPC.Server.validate(validRPCObj, validatorConfig);
           assert.equal(actual, null);
         });
 
@@ -248,35 +240,10 @@ describe('fs-rpc module', function () {
 
           var actual;
 
-          actual = FSRPC.Server.validate({fn: 'mkdir'}, validatorConfig, mountPath);
+          actual = FSRPC.Server.validate({fn: 'mkdir'}, validatorConfig);
           assert.instanceOf(actual, Error);
 
-          actual = FSRPC.Server.validate({fn: 'mkdir', args: [true]}, validatorConfig, mountPath);
-          assert.instanceOf(actual, Error);
-
-        });
-
-
-        it('should validate path arguments', function () {
-
-          var actual;
-
-          // with valid paths
-          actual = FSRPC.Server.validate(validRPCObj, validatorConfig, mountPath);
-          assert.equal(actual, null);
-
-          actual = FSRPC.Server.validate(validRPCObj.rpc, validatorConfig, '/');
-          assert.instanceOf(actual, Error);
-
-          actual = FSRPC.Server.validate(validRPCObj, validatorConfig, '/invalid/path');
-
-          actual = FSRPC.Server.validate({fn: 'mkdir', args: ['/a/..']}, validatorConfig, '/');
-          assert.equal(actual, null);
-
-          actual = FSRPC.Server.validate({fn: 'mkdir', args: ['/a/.']}, validatorConfig, '/');
-          assert.equal(actual, null);
-
-          actual = FSRPC.Server.validate({fn: 'mkdir', args: ['/a/..']}, validatorConfig, '/a');
+          actual = FSRPC.Server.validate({fn: 'mkdir', args: [true]}, validatorConfig);
           assert.instanceOf(actual, Error);
 
         });

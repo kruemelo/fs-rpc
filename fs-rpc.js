@@ -104,7 +104,7 @@
         FSRPC.Server.extendPaths(rpcObj, validatorConfig, mountPath);
       
         // validate
-        validationError = FSRPC.Server.validate(rpcObj, validatorConfig, mountPath);
+        validationError = FSRPC.Server.validate(rpcObj, validatorConfig);
 
         if ('function' === typeof parsedCallback) {
           parsedCallback(validationError, rpcObj, req, res, next);
@@ -161,13 +161,12 @@
   };
 
 
-  FSRPC.Server.validate = function (rpcObj, validatorConfig, mountPath) {
+  FSRPC.Server.validate = function (rpcObj, validatorConfig) {
 
     var fn,
       args,
       validator,
-      error = null,
-      path = require('path');
+      error = null;
 
     if (!rpcObj || 'object' !== typeof rpcObj) {      
       return new Error('EINVALIDARGUMENT');
@@ -200,17 +199,6 @@
         error = new Error('EINVALIDARGTYPE');
         // exit validator
         return true;
-      }
-
-      // check for valid paths
-      if (!argValidator.isPath) {
-        return;
-      }
-
-      if (0 !== path.normalize(arg).indexOf(mountPath)) {
-        error = new Error('EINVALIDPATH');
-        // exit validator
-        return true;        
       }
 
     });
