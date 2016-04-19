@@ -1,6 +1,6 @@
 {
   "name": "fs-rpc",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "node fs rpc",
   "main": "fs-rpc.js",
   "keywords": [
@@ -28,7 +28,7 @@
     "async": "^1.5.2",
     "fs-extra": "^0.26.7",
     "mocha": "^2.4.5",
-    "rpc-fs": "^0.3.7"
+    "rpc-fs": "^0.4.2"
   },
   "scripts": {
     "test": "mocha"
