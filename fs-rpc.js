@@ -81,8 +81,10 @@
 
   FSRPC.Server = function (validatorConfig, parsedCallback) {
 
+    var requestHandler;
+
     // returns a connect/express request handler fn
-    var requestHandler = function (req, res, next) {
+    requestHandler = function (req, res, next) {
 
       var strReqRPC = req.body && req.body.data ? req.body.data : undefined,
         mountPath = req.mountPath,
@@ -95,16 +97,16 @@
       }
 
       // parse
-      rpcObj = FSRPC.Server.parse(strReqRPC, validatorConfig);
+      rpcObj = requestHandler.parse(strReqRPC);
 
       
       if (rpcObj && 'object' === typeof rpcObj) {
 
         // extend paths
-        FSRPC.Server.extendPaths(rpcObj, validatorConfig, mountPath);
+        requestHandler.extendPaths(rpcObj, mountPath);
       
         // validate
-        validationError = FSRPC.Server.validate(rpcObj, validatorConfig);
+        validationError = requestHandler.validate(rpcObj);
 
         if ('function' === typeof parsedCallback) {
           parsedCallback(validationError, rpcObj, req, res, next);
@@ -116,156 +118,157 @@
 
     };  // requestHandler
 
-    return requestHandler;
-  };  // Server
+    requestHandler.validatorConfig = validatorConfig;
 
-  
-  FSRPC.Server.parse = function (rpcStr, validatorConfig) {
+    requestHandler.parse = function (rpcStr) {
 
-    var rpcObj;
+      var rpcObj;
 
-    try {
-      rpcObj = JSON.parse(rpcStr);
-    }
-    catch (err) {}
-
-    if (!rpcObj || 
-        'object' !== typeof rpcObj || 
-        'string' !== typeof rpcObj.fn || 
-        !validatorConfig[rpcObj.fn]
-      ) {
-      rpcObj = null;
-    }
-
-    return rpcObj;
-  };  // Server parse rpc string
-
-
-  FSRPC.Server.extendPaths = function (rpcObj, validatorConfig, mountPath) {
-
-    var path = require('path'),
-      validator;
-
-    validator = validatorConfig[rpcObj.fn];
-
-    if (!validator) {
-      return null;
-    }
-
-    // extend paths with mount path
-    validator.forEach(function (argValidator, argIndex) {
-      if (argValidator.isPath && 'string' === typeof rpcObj.args[argIndex] ) {
-        rpcObj.args[argIndex] = path.join(mountPath, rpcObj.args[argIndex]);
+      try {
+        rpcObj = JSON.parse(rpcStr);
       }
-    });
-  };
+      catch (err) {}
 
-
-  FSRPC.Server.validate = function (rpcObj, validatorConfig) {
-
-    var fn,
-      args,
-      validator,
-      error = null;
-
-    if (!rpcObj || 'object' !== typeof rpcObj) {      
-      return new Error('EINVALIDARGUMENT');
-    }
-
-    args = rpcObj.args || [];
-    fn = rpcObj.fn;
-
-    // validate for supported function name
-    validator = validatorConfig[fn];
-    if (!validator) {
-      return new Error('EINVALIDARGUMENT');
-    }
-
-    // validate arguments
-    validator.some(function (argValidator, argIndex) {
-
-      var arg = args[argIndex],
-        required = -1 === argValidator.dataTypes.indexOf('undefined');
-
-      // check if not required
-      if (undefined === arg && required) {
-        error = new Error('EMISSINGARGUMENT');
-        // exit validator
-        return true;
+      if (!rpcObj || 
+          'object' !== typeof rpcObj || 
+          'string' !== typeof rpcObj.fn || 
+          !this.validatorConfig[rpcObj.fn]
+        ) {
+        rpcObj = null;
       }
 
-      // check for valid data types
-      if (-1 === argValidator.dataTypes.indexOf(typeof arg)) {
-        error = new Error('EINVALIDARGTYPE');
-        // exit validator
-        return true;
+      return rpcObj;
+    };  // Server parse rpc string
+
+
+    requestHandler.extendPaths = function (rpcObj, mountPath) {
+
+      var path = require('path'),
+        validator;
+
+      validator = validatorConfig[rpcObj.fn];
+
+      if (!validator) {
+        return null;
       }
 
-    });
-
-    return error;
-  };  // Server validate rpcObj
-
-
-  FSRPC.Server.execute = function (fs, rpcObj, callback) {
-
-    var fn, args;
-
-    if (!rpcObj || 'object' !== typeof rpcObj) {
-      callback();
-      return;
-    }
-
-    fn = fs[rpcObj.fn];
-    
-    if ('function' !== typeof fn) {
-      callback(new Error('EINVALIDFUNCTION'));
-      return;
-    } 
-
-    args = rpcObj.args || [];
-
-    if (!Array.isArray(args)) {
-      args = [args];
-    }          
-
-    args = args.concat(callback);     
-
-    try {
-      fn.apply(fs, args);          
-    }
-    catch (err) {
-      callback(err);
-    }
-
-    return;
-  };  // Server execute rpc 
-
-
-  FSRPC.Server.stringify = function (execResults) {
-
-    var rpcResult = {data: []};
-
-    if (Array.isArray(execResults)) {
-      // an exec result      
-      execResults.forEach(function (execResult, execResultIndex) {
-        if (0 === execResultIndex && execResult instanceof Error) {
-          // new Error('message') > "Error: message"
-          rpcResult.data.push(execResult);
-          rpcResult.error = {name: execResult.name, message: execResult.message};            
-        }
-        else {
-          rpcResult.data.push(execResult);            
+      // extend paths with mount path
+      validator.forEach(function (argValidator, argIndex) {
+        if (argValidator.isPath && 'string' === typeof rpcObj.args[argIndex] ) {
+          rpcObj.args[argIndex] = path.join(mountPath, rpcObj.args[argIndex]);
         }
       });
-    }
-    else {
-      // not an exec result
-      rpcResult.data.push(execResults);
-    }
+    };
 
-    return JSON.stringify(rpcResult);    
-  };  // Server stringify result 
+
+    requestHandler.validate = function (rpcObj) {
+
+      var fn,
+        args,
+        validator,
+        error = null;
+
+      if (!rpcObj || 'object' !== typeof rpcObj) {      
+        return new Error('EINVALIDARGUMENT');
+      }
+
+      args = rpcObj.args || [];
+      fn = rpcObj.fn;
+
+      // validate for supported function name
+      validator = this.validatorConfig[fn];
+      if (!validator) {
+        return new Error('EINVALIDARGUMENT');
+      }
+
+      // validate arguments
+      validator.some(function (argValidator, argIndex) {
+
+        var arg = args[argIndex],
+          required = -1 === argValidator.dataTypes.indexOf('undefined');
+
+        // check if not required
+        if (undefined === arg && required) {
+          error = new Error('EMISSINGARGUMENT');
+          // exit validator
+          return true;
+        }
+
+        // check for valid data types
+        if (-1 === argValidator.dataTypes.indexOf(typeof arg)) {
+          error = new Error('EINVALIDARGTYPE');
+          // exit validator
+          return true;
+        }
+
+      });
+
+      return error;
+    };  // Server validate rpcObj
+
+
+    requestHandler.execute = function (fs, rpcObj, callback) {
+
+      var fn, args;
+
+      if (!rpcObj || 'object' !== typeof rpcObj) {
+        callback();
+        return;
+      }
+
+      fn = fs[rpcObj.fn];
+      
+      if ('function' !== typeof fn) {
+        callback(new Error('EINVALIDFUNCTION'));
+        return;
+      } 
+
+      args = rpcObj.args || [];
+
+      if (!Array.isArray(args)) {
+        args = [args];
+      }          
+
+      args = args.concat(callback);     
+
+      try {
+        fn.apply(fs, args);          
+      }
+      catch (err) {
+        callback(err);
+      }
+
+      return;
+    };  // Server execute rpc 
+
+
+    requestHandler.stringify = function (execResults) {
+
+      var rpcResult = {data: []};
+
+      if (Array.isArray(execResults)) {
+        // an exec result      
+        execResults.forEach(function (execResult, execResultIndex) {
+          if (0 === execResultIndex && execResult instanceof Error) {
+            // new Error('message') > "Error: message"
+            rpcResult.data.push(execResult);
+            rpcResult.error = {name: execResult.name, message: execResult.message};            
+          }
+          else {
+            rpcResult.data.push(execResult);            
+          }
+        });
+      }
+      else {
+        // not an exec result
+        rpcResult.data.push(execResults);
+      }
+
+      return JSON.stringify(rpcResult);    
+    };  // Server stringify result 
+
+    return requestHandler;    
+  };  // Server
 
   return FSRPC;
 

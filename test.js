@@ -2,7 +2,7 @@
 // $ ./node_modules/.bin/mocha -w
 
 /*
-workflow:
+flow:
 
 client:
   - RPC = FSRPC.Client
@@ -157,43 +157,42 @@ describe('fs-rpc module', function () {
 
         it('should parse rpc-strings', function () {
 
-          var actual;
+          var fsrpcServer,
+            actual;
+
+          fsrpcServer = FSRPC.Server(validatorConfig);
     
-          assert.isFunction(FSRPC.Server.parse);
+          assert.isFunction(fsrpcServer.parse);
 
           assert.deepEqual(
-            FSRPC.Server.parse(
-              'invalid json string', 
-              validatorConfig
-            ), 
+            fsrpcServer.parse('invalid json string'), 
             null,
             'invalid json string'
           );
 
-          assert.deepEqual(FSRPC.Server.parse(
+          assert.deepEqual(fsrpcServer.parse(
             '{"fn":"unsupportedFunction","args":[]}', 
             validatorConfig
           ), null);
 
 
-          actual = FSRPC.Server.parse(
+          actual = fsrpcServer.parse(
             FSRPC.Client.stringify('mkdir', '/x'), 
             validatorConfig
           );
 
-          FSRPC.Server.extendPaths(actual, validatorConfig, mountPath);
+          fsrpcServer.extendPaths(actual, mountPath);
 
           assert.deepEqual(
             actual, 
             {fn: 'mkdir', args: [path.join(mountPath, '/x')]}
           );
 
-          actual = FSRPC.Server.parse(
-            FSRPC.Client.stringify('writeFile', ['/x', base64('buffer \u00bd + \u00bc = \u00be test')]), 
-            validatorConfig
+          actual = fsrpcServer.parse(
+            FSRPC.Client.stringify('writeFile', ['/x', base64('buffer \u00bd + \u00bc = \u00be test')])
           );
 
-          FSRPC.Server.extendPaths(actual, validatorConfig, mountPath);
+          fsrpcServer.extendPaths(actual, mountPath);
           
           assert.deepEqual(
             actual, 
@@ -207,22 +206,22 @@ describe('fs-rpc module', function () {
 
       describe('Server.validate validation', function () {
 
-
-        var validRPCObj = {fn: 'mkdir', args: [path.join(mountPath, '/x')]};
+        var fsrpcServer = FSRPC.Server(validatorConfig),
+          validRPCObj = {fn: 'mkdir', args: [path.join(mountPath, '/x')]};
 
         it('should have validate function', function () {
-          assert.isFunction(FSRPC.Server.validate);
+          assert.isFunction(fsrpcServer.validate);
         });
 
 
         it('should return an error if function name rpc.fn is not set in config', function () {
           var actual;
 
-          actual = FSRPC.Server.validate({args: []}, validatorConfig);
+          actual = fsrpcServer.validate({args: []});
           
           assert.instanceOf(actual, Error);
 
-          actual = FSRPC.Server.validate({fn: 'unsupportedFunction', args: []}, validatorConfig);
+          actual = fsrpcServer.validate({fn: 'unsupportedFunction', args: []});
           
           assert.instanceOf(actual, Error);
 
@@ -231,7 +230,7 @@ describe('fs-rpc module', function () {
 
         it('should return null for function names set in config', function () {
           var actual;
-          actual = FSRPC.Server.validate(validRPCObj, validatorConfig);
+          actual = fsrpcServer.validate(validRPCObj);
           assert.equal(actual, null);
         });
 
@@ -240,10 +239,10 @@ describe('fs-rpc module', function () {
 
           var actual;
 
-          actual = FSRPC.Server.validate({fn: 'mkdir'}, validatorConfig);
+          actual = fsrpcServer.validate({fn: 'mkdir'});
           assert.instanceOf(actual, Error);
 
-          actual = FSRPC.Server.validate({fn: 'mkdir', args: [true]}, validatorConfig);
+          actual = fsrpcServer.validate({fn: 'mkdir', args: [true]});
           assert.instanceOf(actual, Error);
 
         });
@@ -253,14 +252,16 @@ describe('fs-rpc module', function () {
 
       describe('Server.execute', function () {
 
+        var fsrpcServer = FSRPC.Server(validatorConfig);
+
         it('should have execution function', function () {
-          assert.isFunction(FSRPC.Server.execute);
+          assert.isFunction(fsrpcServer.execute);
         });
 
 
         it('should return error on executing undefined function', function (done) {
 
-          FSRPC.Server.execute(rpcFS, [{fn: 'undefinedFunction'}], function (err) {  
+          fsrpcServer.execute(rpcFS, [{fn: 'undefinedFunction'}], function (err) {  
             assert.instanceOf(err, Error);
             done();
           });
@@ -273,7 +274,7 @@ describe('fs-rpc module', function () {
           async.series([
             
               function (next) {
-                FSRPC.Server.execute(rpcFS, 
+                fsrpcServer.execute(rpcFS, 
                   {fn: 'stat', args: path.join(mountPath, 'dirA')}, 
                   function (err, stats) {                  
                     assert.isNull(err, 'should not have an error');
@@ -284,7 +285,7 @@ describe('fs-rpc module', function () {
               },
 
               function (next) {
-                FSRPC.Server.execute(rpcFS, 
+                fsrpcServer.execute(rpcFS, 
                   {fn: 'mkdir', args: path.join(mountPath, 'dirA')}, 
                   function (err) {
                     assert.instanceOf(err, Error, 'first result should have an error');
@@ -294,7 +295,7 @@ describe('fs-rpc module', function () {
               },
 
               function (next) {
-                FSRPC.Server.execute(rpcFS, 
+                fsrpcServer.execute(rpcFS, 
                   {fn: 'readdirStat', args: path.join(mountPath, 'dirA')}, 
                   function (err, dirStats) {
                     assert.isNull(err, 'should not have an error');
@@ -306,7 +307,7 @@ describe('fs-rpc module', function () {
               },
 
               function (next) {
-                FSRPC.Server.execute(rpcFS, 
+                fsrpcServer.execute(rpcFS, 
                   {fn: 'readdirStat', args: path.join(mountPath, 'notExistingDirectory')}, 
                   function (err) {
                     assert.instanceOf(err, Error);
@@ -325,6 +326,8 @@ describe('fs-rpc module', function () {
       
       describe('Server.stringify', function () {
 
+        var fsrpcServer = FSRPC.Server(validatorConfig);
+
         it('should stringify exec results', function (done) {
 
           var expected = [
@@ -342,7 +345,7 @@ describe('fs-rpc module', function () {
             [new Error('msg')],
             [null, base64('buffer \u00bd + \u00bc = \u00be test')]
           ].forEach(function (rpc, index) {
-            var actual = FSRPC.Server.stringify(rpc);
+            var actual = fsrpcServer.stringify(rpc);
             assert.strictEqual(actual, expected[index]);            
           });
 
@@ -357,8 +360,6 @@ describe('fs-rpc module', function () {
     describe('use as an express middleware', function () {
 
       it('should handle request', function (done) {
-
-        var server;
 
         function parsedCallback (validationError, rpc, req, res, next) {
           assert.isNull(validationError);
@@ -379,11 +380,11 @@ describe('fs-rpc module', function () {
           done();
         }
 
-        server = new FSRPC.Server(validatorConfig, parsedCallback);
+        var fsrpcServer = FSRPC.Server(validatorConfig, parsedCallback);
 
-        assert.isFunction(server, 'server constructor should return a function');
+        assert.isFunction(fsrpcServer, 'server constructor should return a function');
 
-        server(
+        fsrpcServer(
           // req
           {
             body: {
