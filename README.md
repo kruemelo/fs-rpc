@@ -153,51 +153,31 @@ a callback function that returns the executed function results.
 
 Validator config file `validator-config.json` (commented):
 
+```
+{
+  // function name
+  "rename": [      
+    // argument list  
+    // first argument
     {
-      // function name
-      "rename": [      
-        // argument list  
-        // first argument
-        {
-          // valid data types; use 'undefined' if for optional args
-          dataTypes: ["string"],
-          // check for valid path
-          isPath: true
-        },
-        // second argument
-        {
-          dataTypes: ["string"],
-          isPath: true
-        }
-      ],
-      // fs.mkdir(path[, mode], callback)
-      "mkdir": [
-        {dataTypes: ["string"], isPath: true},
-        {dataTypes: ["undefined", "number"]}
-      ]
+      // valid data types; use 'undefined' if for optional args
+      dataTypes: ["string"],
+      // check for valid path
+      isPath: true
+    },
+    // second argument
+    {
+      dataTypes: ["string"],
+      isPath: true
     }
-
-## flow
-
-client:
-* RPC = FSRPC.Client
-* rpc = RPC.stringify(fn, args)
-* xhr.send(rpc) -> server
-
-server:
-* express app: app = express();
- * bodyParser = require('body-parser');
- * app.use(bodyParser.json({limit: '6mb'}));
- * app.use('/', router);
-* router: router = express.Router();
- * FSRPC = require('fs-rpc');
- * RPC = FSRPC.Server; 
- * router.post('/rpc', function (req, res, next)
- * req.mountPath = req.app.fsMountPath;
- * router.use(RPC(validatorConfig, fnRequesHandler));
- * fnRequestHandler(validationError, rpc, req, res, next)
- * RPC.execute(RPCFS, rpc, function (err, result) {
- * res.end(RPC.stringify([err, result])); -> client   
+  ],
+  // fs.mkdir(path[, mode], callback)
+  "mkdir": [
+    {dataTypes: ["string"], isPath: true},
+    {dataTypes: ["undefined", "number"]}
+  ]
+}
+```
 
 client:
 * RPC = FSRPC.Client
@@ -211,24 +191,26 @@ var express = require('express');
 var router = express.Router();
 
 var RPCFS = require('rpc-fs');
-var RPC = require('fs-rpc').Server;
-var validatorConfig = require('./validator-config.json');
+var FSRPC = require('fs-rpc');
 
-function parsedCallback (validationError, rpc, req, res, next) {
-  if (validationError) {
-    next(validationError);
-    return;
+var rpcServer = FSRPC.Server(
+
+  require('./validator-config.json'),
+  
+  function (validationError, rpc, req, res, next) {
+    if (validationError) {
+      next(validationError);
+      return;
+    }
+
+    rpcServer.execute(RPCFS, rpc, function (err, result) {
+      res.end(rpcServer.stringify([err, result]));              
+    });
   }
+);
 
-  RPC.execute(RPCFS, rpc, function (err, result) {
-    res.end(RPC.stringify([err, result]));              
-  });
-}
 
-router.use(RPC(
-  validatorConfig, 
-  parsedCallback
-));
+router.use(rpcServer);
 
 ```
 
