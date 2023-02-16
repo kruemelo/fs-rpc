@@ -1,6 +1,6 @@
 {
   "name": "fs-rpc",
-  "version": "6.0.2",
+  "version": "6.0.3",
   "description": "node fs rpc",
   "main": "fs-rpc.js",
   "keywords": [
@@ -22,7 +22,7 @@
     "chai": "^2.1.0",
     "fs-extra": "^0.26.2",
     "mocha": "^2.3.3",
-    "rpc-fs": "^0.5.0"
+    "rpc-fs": "^0.5.2"
   },
   "dependencies": {},
   "scripts": {

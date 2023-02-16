@@ -133,7 +133,7 @@ describe('fs-rpc module', function () {
   describe('FSRPC.Server', function () {
     
     var validatorConfig = require('./validator-config.json'),
-      mountPath = path.join(os.tmpDir(), 'fs-rpc-test');
+      mountPath = path.join(os.tmpdir(), 'fs-rpc-test');
 
     before(function (done) {
       var fixturesPath = path.join(__dirname, 'fixtures', 'testFS');
